@@ -6,8 +6,8 @@ This is a web-based game where users try to guess the prompt used to generate an
 
 1. Clone the repository:
    ```
-   git clone https://github.com/your-username/ai-image-guessing-game.git
-   cd ai-image-guessing-game
+   git clone https://github.com/jwalahe/ImageGuess.git
+   cd ImageGuess
    ```
 
 2. Create a virtual environment and activate it:
