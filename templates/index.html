@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Image Guessing Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        .container {
+            text-align: center;
+            background-color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        #generated-image {
+            max-width: 100%;
+            height: auto;
+            margin-bottom: 1rem;
+        }
+        input, button {
+            font-size: 1rem;
+            padding: 0.5rem;
+            margin: 0.5rem 0;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #generate-button {
+            margin-top: 1rem;
+            padding: 0.5rem 1rem;
+            font-size: 1rem;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        #generate-button:hover {
+            background-color: #45a049;
+        }
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+            display: none;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AI Image Guessing Game</h1>
+        <div id="image-container">
+            <img id="generated-image" src="" alt="Generated Image">
+            <div class="loader" id="loader"></div>
+        </div>
+        <form id="guess-form">
+            <input type="text" id="user-guess" placeholder="Enter your guess" required>
+            <button type="submit">Submit Guess</button>
+        </form>
+        <div id="feedback"></div>
+        <div id="score">Score: <span id="score-value">0</span></div>
+        <button id="generate-button">Generate New Image</button>
+    </div>
+
+    <script>
+        let currentPrompt = '';
+        let score = 0;
+
+        async function generateImage() {
+            try {
+                document.getElementById('loader').style.display = 'block';
+                document.getElementById('generated-image').style.display = 'none';
+                document.getElementById('feedback').textContent = '';
+                document.getElementById('user-guess').value = '';
+
+                const promptResponse = await fetch('/get_random_prompt');
+                const promptData = await promptResponse.json();
+                currentPrompt = promptData.prompt;
+
+                const response = await fetch('/generate_image', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ prompt: currentPrompt }),
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                document.getElementById('generated-image').src = data.image_url;
+                document.getElementById('generated-image').style.display = 'block';
+                document.getElementById('loader').style.display = 'none';
+                console.log("Image generated successfully");
+            } catch (error) {
+                console.error("Error generating image:", error);
+                document.getElementById('feedback').textContent = "Error generating image. Please try again.";
+                document.getElementById('loader').style.display = 'none';
+            }
+        }
+
+        document.getElementById('guess-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const userGuess = document.getElementById('user-guess').value;
+            
+            try {
+                const response = await fetch('/submit_guess', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ original_prompt: currentPrompt, user_guess: userGuess }),
+                });
+                
+                const data = await response.json();
+                document.getElementById('feedback').textContent = `${data.result} The original prompt was: "${data.original_prompt}"`;
+                score += data.points;
+                document.getElementById('score-value').textContent = score;
+                
+                if (data.result === "Correct!") {
+                    setTimeout(generateImage, 2000); // Generate a new image after 2 seconds
+                }
+            } catch (error) {
+                console.error("Error submitting guess:", error);
+                document.getElementById('feedback').textContent = "Error submitting guess. Please try again.";
+            }
+        });
+
+        document.getElementById('generate-button').addEventListener('click', generateImage);
+
+        // Generate the first image when the page loads
+        generateImage();
+    </script>
+</body>
+</html>
